@@ -1,0 +1,13 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject DashboardState State
+<PageTitle>Turnstile monitor</PageTitle>
+<div class="monitor-title"><div><span class="eyebrow">LIVE ACCESS CONTROL</span><h1>Turnstile Monitor</h1></div><span class="status @(snapshot.DatabaseAvailable ? "online" : "offline")">@(snapshot.DatabaseAvailable ? "Database online" : "Database unavailable")</span></div>
+@if (!snapshot.DatabaseAvailable) { <div class="alert">Events cannot currently be loaded. The service will retry automatically.</div> }
+<section class="spotlight">
+ @if (snapshot.Spotlight is null) { <div class="empty"><strong>Waiting for an access event</strong><span>New events appear automatically.</span></div> }
+ else { <img src="@snapshot.Spotlight.PhotoUrl" alt="Personnel photo" onerror="this.src='/images/person-fallback.svg'"/><div><span class="eyebrow">CURRENT EVENT</span><h2>@snapshot.Spotlight.PersonName</h2><p>@snapshot.Spotlight.AccessNumber · @snapshot.Spotlight.DeviceName</p><dl><dt>Verification</dt><dd>@snapshot.Spotlight.VerifyMode</dd><dt>Event</dt><dd>@snapshot.Spotlight.EventName</dd><dt>Address</dt><dd>@snapshot.Spotlight.EventAddress</dd><dt>Time</dt><dd>@snapshot.Spotlight.Timestamp.ToLocalTime().ToString("g")</dd></dl></div> }
+</section>
+<div class="columns"><section><h2>Up next <small>@snapshot.Queue.Count</small></h2>@foreach(var item in snapshot.Queue){<article class="event"><strong>@item.PersonName</strong><span>@item.EventName · @item.Timestamp.ToLocalTime().ToString("T")</span></article>}</section><section><h2>Recent activity</h2>@if(snapshot.Feed.Count == 0){<p class="muted">No completed events yet.</p>}@foreach(var item in snapshot.Feed){<article class="event"><strong>@item.PersonName</strong><span>@item.DeviceName · @item.EventName · @item.Timestamp.ToLocalTime().ToString("g")</span></article>}</section></div>
+@code { private DashboardSnapshot snapshot = new(null, [], [], true); protected override void OnInitialized(){ snapshot=State.Snapshot(); State.Changed += Refresh; } private void Refresh()=>_ = InvokeAsync(()=>{snapshot=State.Snapshot();StateHasChanged();}); public void Dispose()=>State.Changed-=Refresh; }
